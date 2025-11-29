@@ -1,5 +1,5 @@
 {
-    "name": "stellarsecurity/user-api-laravel",
+    "name": "stellarsecurity/user-laravel",
     "description": "Stellar Security - User API client for Laravel (register, login, password reset, profile lookups).",
     "type": "library",
     "license": "MIT",

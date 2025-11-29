@@ -6,7 +6,7 @@ Small Laravel helper package that talks to the **Stellar User API**
 ## Install
 
 ```bash
-composer require stellarsecurity/user-api-laravel
+composer require stellarsecurity/user-laravel
 ```
 
 Laravel package auto-discovery will register the service provider and facade.
