@@ -1,0 +1,25 @@
+{
+    "name": "stellarsecurity/user-api-laravel",
+    "description": "Stellar Security - User API client for Laravel (register, login, password reset, profile lookups).",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "StellarSecurity\\UserApiLaravel\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.1",
+        "illuminate/support": "^10.0|^11.0"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "StellarSecurity\\UserApiLaravel\\StellarUserServiceProvider"
+            ],
+            "aliases": {
+                "StellarUser": "StellarSecurity\\UserApiLaravel\\Facades\\StellarUser"
+            }
+        }
+    }
+}
