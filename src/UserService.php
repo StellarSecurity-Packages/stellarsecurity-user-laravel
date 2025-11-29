@@ -160,4 +160,18 @@ class UserService
             $this->baseUrl . 'v1/usercontroller/user/' . $id
         );
     }
+
+    /**
+     * Retrieve personal token information from the Stellar User API.
+     *
+     * @param  string  $token
+     * @return \Illuminate\Http\Client\Response
+     */
+    public function token(string $token): Response
+    {
+        return $this->client()->get(
+            $this->baseUrl . 'v1/personaltokencontroller/' . $token
+        );
+    }
+
 }
