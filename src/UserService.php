@@ -124,6 +124,26 @@ class UserService
     }
 
     /**
+     * Checks reset code only
+     *
+     * POST /v1/usercontroller/checkresetpasswordconfirmationcode
+     */
+    public function checkresetpasswordconfirmationcode(
+        string $email,
+        string $confirmationCode,
+        string $newPassword
+    ): PromiseInterface|Response {
+        return $this->client()->post(
+            $this->baseUrl . 'v1/usercontroller/verifyresetpasswordconfirmationcode',
+            [
+                'email'             => $email,
+                'confirmation_code' => $confirmationCode
+            ]
+        );
+    }
+
+
+    /**
      * Patch/update user fields.
      *
      * PATCH /v1/usercontroller/patch
