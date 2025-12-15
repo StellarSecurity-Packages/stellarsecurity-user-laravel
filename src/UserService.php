@@ -130,11 +130,10 @@ class UserService
      */
     public function checkresetpasswordconfirmationcode(
         string $email,
-        string $confirmationCode,
-        string $newPassword
+        string $confirmationCode
     ): PromiseInterface|Response {
         return $this->client()->post(
-            $this->baseUrl . 'v1/usercontroller/verifyresetpasswordconfirmationcode',
+            $this->baseUrl . 'v1/usercontroller/checkresetpasswordconfirmationcode',
             [
                 'email'             => $email,
                 'confirmation_code' => $confirmationCode
