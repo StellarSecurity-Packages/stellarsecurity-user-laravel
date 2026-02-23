@@ -193,4 +193,24 @@ class UserService
         );
     }
 
+    /**
+     * Change a user's password.
+     *
+     * PATCH /v1/usercontroller/changepassword
+     */
+    public function changePassword(
+        int $userId,
+        string $currentPassword,
+        string $newPassword
+    ): PromiseInterface|Response {
+        return $this->client()->patch(
+            $this->baseUrl . 'v1/usercontroller/changepassword',
+            [
+                'user_id'          => $userId,
+                'current_password' => $currentPassword,
+                'new_password'     => $newPassword,
+            ]
+        );
+    }
+
 }

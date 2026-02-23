@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response create(array $data)
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response sendResetPasswordLink(string $email, string $confirmationCode)
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response verifyResetPasswordConfirmationCode(string $email, string $confirmationCode, string $newPassword)
+ * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response changePassword(string $userId, string $currentPassword, string $newPassword)
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response patch(array $data)
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response auth(array $data)
  * @method static \Illuminate\Http\Client\Response user(string $id)
