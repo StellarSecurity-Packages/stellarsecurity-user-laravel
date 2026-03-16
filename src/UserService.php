@@ -213,4 +213,22 @@ class UserService
         );
     }
 
+    /**
+     * Delete a user.
+     *
+     * POST /v1/usercontroller/deleteuser
+     */
+    public function deleteUser(
+        int|string $userId,
+        string $currentPassword
+    ): PromiseInterface|Response {
+        return $this->client()->post(
+            $this->baseUrl . 'v1/usercontroller/deleteuser',
+            [
+                'user_id'          => $userId,
+                'current_password' => $currentPassword,
+            ]
+        );
+    }
+
 }
