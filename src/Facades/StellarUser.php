@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Facade;
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response patch(array $data)
  * @method static \GuzzleHttp\Promise\PromiseInterface|\Illuminate\Http\Client\Response auth(array $data)
  * @method static \Illuminate\Http\Client\Response user(string $id)
+ * @method static \Illuminate\Http\Client\Response loginSession(string $email, string $password, ?\DateTimeInterface $expiresAt = null)
+ * @method static \Illuminate\Http\Client\Response registerSession(string $email, string $password, ?\DateTimeInterface $expiresAt = null)
+ * @method static \Illuminate\Http\Client\Response introspectSession(string $token)
+ * @method static \Illuminate\Http\Client\Response logoutSession(string $token)
  *
  * @see \StellarSecurity\UserApiLaravel\UserApiClient
  */
