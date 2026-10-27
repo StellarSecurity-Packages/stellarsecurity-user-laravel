@@ -22,6 +22,7 @@ class StellarUserServiceProvider extends ServiceProvider
 
         // Optional: alias so you can type-hint UserApiClient or 'stellar.user'
         $this->app->alias(UserApiClient::class, 'stellar.user');
+        $this->app->alias(UserApiClient::class, UserService::class);
     }
 
     /**

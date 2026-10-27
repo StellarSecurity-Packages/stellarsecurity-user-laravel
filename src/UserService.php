@@ -49,15 +49,12 @@ class UserService
             ) . '/';
 
         // Env variable names can be overridden via config.
-        $this->usernameEnvKey = config(
-            'stellar-user.username_env',
-            'APPSETTING_API_USERNAME_STELLAR_USER_API'
-        );
+        // Preserve explicitly configured legacy keys; also honor the published config.
+        $this->usernameEnvKey = config('stellar-user.username_env')
+            ?? config('stellar-user.username_env_key', 'APPSETTING_API_USERNAME_STELLAR_USER_API');
 
-        $this->passwordEnvKey = config(
-            'stellar-user.password_env',
-            'APPSETTING_API_PASSWORD_STELLAR_USER_API'
-        );
+        $this->passwordEnvKey = config('stellar-user.password_env')
+            ?? config('stellar-user.password_env_key', 'APPSETTING_API_PASSWORD_STELLAR_USER_API');
     }
 
     /**
@@ -70,6 +67,67 @@ class UserService
 
         return Http::withBasicAuth($username, $password)
             ->retry(3);
+    }
+
+    /** Separate transport: legacy retry/response behavior above remains unchanged. */
+    protected function sessionClient(): \Illuminate\Http\Client\PendingRequest
+    {
+        $url = parse_url($this->baseUrl);
+        if ($url === false || ($url['scheme'] ?? '') !== 'https' || empty($url['host'])
+            || isset($url['user']) || isset($url['pass'])
+            || isset($url['query']) || isset($url['fragment'])) {
+            throw new \InvalidArgumentException('Session requests require an HTTPS API base URL without embedded credentials.');
+        }
+        $username = env($this->usernameEnvKey);
+        $password = env($this->passwordEnvKey);
+        if (!is_string($username) || $username === '' || !is_string($password) || $password === '') {
+            throw new \RuntimeException('User API service authentication is not configured.');
+        }
+        return Http::withBasicAuth($username, $password)->acceptJson()->asJson()
+            ->connectTimeout(5)->timeout(15)
+            ->withOptions(['allow_redirects' => false, 'http_errors' => false, 'verify' => true]);
+    }
+
+    /** Login without rotating legacy sessions. Omitted expiry uses the API's 24h default. */
+    public function loginSession(string $email, #[\SensitiveParameter] string $password, ?\DateTimeInterface $expiresAt = null): Response
+    {
+        return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/login',
+            $this->sessionCredentials($email, $password, $expiresAt));
+    }
+
+    /** Separate scoped registration. Existing create() behavior is unchanged. */
+    public function registerSession(string $email, #[\SensitiveParameter] string $password, ?\DateTimeInterface $expiresAt = null): Response
+    {
+        return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/register',
+            $this->sessionCredentials($email, $password, $expiresAt));
+    }
+
+    /** Never place a scoped bearer token in the URL. */
+    public function introspectSession(#[\SensitiveParameter] string $token): Response
+    {
+        $this->validateSessionToken($token);
+        return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/introspect', ['token' => $token]);
+    }
+
+    /** Revoke only the supplied scoped session. */
+    public function logoutSession(#[\SensitiveParameter] string $token): Response
+    {
+        $this->validateSessionToken($token);
+        return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/logout', ['token' => $token]);
+    }
+
+    private function sessionCredentials(string $email, #[\SensitiveParameter] string $password, ?\DateTimeInterface $expiresAt): array
+    {
+        $fields = ['username' => $email, 'password' => $password];
+        if ($expiresAt !== null) $fields['expires_at'] = $expiresAt->format(DATE_ATOM);
+        return $fields;
+    }
+
+    private function validateSessionToken(#[\SensitiveParameter] string $token): void
+    {
+        if (strlen($token) > 256 || !preg_match('/^[1-9][0-9]*\|[A-Za-z0-9]{40}$/D', $token)) {
+            throw new \InvalidArgumentException('Invalid scoped session token.');
+        }
     }
 
     /**
