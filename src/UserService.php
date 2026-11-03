@@ -403,6 +403,8 @@ class UserService
     /**
      * Delete a user.
      *
+     * @deprecated Use deleteAccount() with the user's bearer token. The secured API rejects ID-only deletion.
+     *
      * POST /v1/usercontroller/deleteuser
      */
     public function deleteUser(
