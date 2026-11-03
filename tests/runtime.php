@@ -86,4 +86,25 @@ putenv('STELLAR_PACKAGE_LEGACY_USERNAME=legacy-synthetic-user');
 putenv('STELLAR_PACKAGE_LEGACY_PASSWORD=legacy-synthetic-password');
 (new UserService())->loginSession('synthetic@example.test', 'synthetic');
 verify($factory->recorded()[4][0]->hasHeader('Authorization', 'Basic '.base64_encode('legacy-synthetic-user:legacy-synthetic-password')), 'legacy config precedence');
+$before = count($factory->recorded());
+$nonce = rtrim(strtr(base64_encode(str_repeat('n', 32)), '+/', '-_'), '=');
+$client->getIdentityKeys();
+$client->getLoginMethod('  SYNTHETIC@example.test ', $nonce);
+$client->resolveToken($token);
+$requests = $factory->recorded();
+verify($requests[$before][0]->method() === 'GET' && str_ends_with($requests[$before][0]->url(), '/v2/auth/keys'), 'public identity keys path');
+verify($requests[$before + 1][0]->data() === ['email' => 'synthetic@example.test', 'nonce' => $nonce], 'signed method canonical payload');
+verify($requests[$before + 2][0]->data() === ['token' => $token] && !str_contains($requests[$before + 2][0]->url(), $token), 'common token lookup uses POST body');
+verify(count($requests) === $before + 3, 'no automatic identity retries');
+foreach (array_slice($optionsSeen, $before) as $options) {
+    verify($options['allow_redirects'] === false && $options['verify'] === true && $options['timeout'] === 15, 'bounded identity transport');
+}
+foreach ([['bad-email', $nonce], ['synthetic@example.test', 'invalid'], ['synthetic@example.test', str_repeat('_', 43)]] as [$email, $badNonce]) {
+    try { $client->getLoginMethod($email, $badNonce); throw new RuntimeException('Invalid method accepted'); }
+    catch (InvalidArgumentException) { verify(count($factory->recorded()) === $before + 3, 'invalid method never transmitted'); }
+}
+foreach (['', str_repeat('x', 1025)] as $badToken) {
+    try { $client->resolveToken($badToken); throw new RuntimeException('Invalid token accepted'); }
+    catch (InvalidArgumentException) { verify(count($factory->recorded()) === $before + 3, 'invalid identity token never transmitted'); }
+}
 echo $checks." runtime checks passed with fake HTTP and synthetic credentials only.\n";
