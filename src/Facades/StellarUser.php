@@ -21,6 +21,9 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Illuminate\Http\Client\Response finishOpaqueLogin(string $challengeId, string $finishLoginRequest)
  * @method static \Illuminate\Http\Client\Response inspectOpaqueSession(string $token)
  * @method static \Illuminate\Http\Client\Response logoutOpaqueSession(string $token)
+ * @method static \Illuminate\Http\Client\Response startOpaqueAccount(string $flow, array $body)
+ * @method static \Illuminate\Http\Client\Response proveOpaqueAccount(string $flow, array $body)
+ * @method static \Illuminate\Http\Client\Response finishOpaqueAccount(string $flow, array $body)
  *
  * @see \StellarSecurity\UserApiLaravel\UserApiClient
  */
