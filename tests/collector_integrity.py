@@ -1,4 +1,3 @@
-import ast
 import base64
 import hashlib
 from pathlib import Path
@@ -32,14 +31,28 @@ class WeeklyCollectorIntegrity(unittest.TestCase):
         self.assertEqual(workflow.count(weekly), 1)
         self.assertEqual(hashlib.sha256((ROOT / '.github/workflows/stellar-commit-guard.yml').read_bytes()).hexdigest(), WORKER)
 
-        # Execute only the inspected text-formatting functions, never the collector.
-        functions = [node for node in ast.parse(source).body
-                     if isinstance(node, ast.FunctionDef) and node.name in {'sha256', 'payload_steps', 'render_workflow'}]
-        self.assertEqual({node.name for node in functions}, {'sha256', 'payload_steps', 'render_workflow'})
-        scope = {'base64': base64, 'hashlib': hashlib, 're': re, 'zlib': zlib, 'Halt': RuntimeError}
-        exec(compile(ast.Module(body=functions, type_ignores=[]), 'reviewed-workflow-formatter', 'exec'), scope)
-        self.assertEqual(hashlib.sha256(scope['render_workflow'](original)).hexdigest(), OLD_WORKFLOW)
-        self.assertEqual(scope['render_workflow'](source), workflow)
+        self.assertEqual(zlib.compress(source, level=9), packed)
+        original_packed = zlib.compress(original, level=9)
+        repaired = workflow
+        for offset in range(0, len(packed), 12000):
+            current_chunk = base64.b64encode(packed[offset:offset + 12000])
+            original_chunk = base64.b64encode(original_packed[offset:offset + 12000])
+            self.assertEqual(repaired.count(current_chunk), 3)
+            repaired = repaired.replace(current_chunk, original_chunk)
+        replacements = [
+            (b'packed_path.stat().st_size != ' + str(len(packed)).encode(),
+             b'packed_path.stat().st_size != ' + str(len(original_packed)).encode()),
+            (hashlib.sha256(packed).hexdigest().encode(), hashlib.sha256(original_packed).hexdigest().encode()),
+            (b'inflater.decompress(packed, ' + str(len(source) + 1).encode() + b')',
+             b'inflater.decompress(packed, ' + str(len(original) + 1).encode() + b')'),
+            (b'if len(raw) != ' + str(len(source)).encode() + b' ',
+             b'if len(raw) != ' + str(len(original)).encode() + b' '),
+            (hashlib.sha256(source).hexdigest().encode(), OLD_SOURCE.encode()),
+        ]
+        for current, previous in replacements:
+            self.assertEqual(repaired.count(current), 3)
+            repaired = repaired.replace(current, previous)
+        self.assertEqual(hashlib.sha256(repaired).hexdigest(), OLD_WORKFLOW)
         source_check = ("if self.file(TRIGGER, head) != expected_trigger or "
                         "sha256(self.file(WORKER, head)) != WORKER_SHA256:")
         self.assertIn(source_check, source.decode())
