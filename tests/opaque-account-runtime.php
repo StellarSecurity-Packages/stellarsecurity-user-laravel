@@ -62,4 +62,24 @@ foreach (array_slice($optionsSeen, $before) as $options) {
     verify($options['allow_redirects'] === false && $options['verify'] === true
         && $options['timeout'] === 15 && $options['connect_timeout'] === 5, 'account transport remains bounded and verifies TLS');
 }
+$beforeDelete = count($factory->recorded());
+$password = '  exact deletion password  ';
+$response = StellarSecurity\UserApiLaravel\Facades\StellarUser::deleteAccount($token, $password);
+verify($response->status() === 401, 'account deletion returns upstream authentication failures');
+$request = $factory->recorded()[$beforeDelete][0];
+verify($request->url() === 'https://identity.example.test/api/v1/usercontroller/deleteuser', 'deletion uses the secured User API endpoint');
+verify($request->data() === ['access_token' => $token, 'current_password' => $password], 'deletion sends the bearer credential and exact password, never user ID');
+verify(count($factory->recorded()) === $beforeDelete + 1, 'destructive request is not retried');
+$options = $optionsSeen[$beforeDelete];
+verify($options['allow_redirects'] === false && $options['verify'] === true
+    && $options['timeout'] === 15 && $options['connect_timeout'] === 5, 'deletion transport remains bounded and verifies TLS');
+try {
+    $client->deleteAccount('123', $password);
+    throw new RuntimeException('ID-only deletion accepted.');
+} catch (InvalidArgumentException) {
+    verify(count($factory->recorded()) === $beforeDelete + 1, 'ID-only deletion is rejected before HTTP');
+}
+[$id, $secret] = explode('|', $token, 2);
+$client->deleteAccount($secret, $password);
+verify($factory->recorded()->last()[0]->data() === ['access_token' => $secret, 'current_password' => $password], 'historical secret-only bearer is forwarded without changing it');
 echo $checks." combined SDK account-flow checks passed; fake HTTP only.\n";

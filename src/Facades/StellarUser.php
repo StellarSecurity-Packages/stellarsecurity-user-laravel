@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Facade;
  * @method static \Illuminate\Http\Client\Response registerSession(string $email, string $password, ?\DateTimeInterface $expiresAt = null)
  * @method static \Illuminate\Http\Client\Response introspectSession(string $token)
  * @method static \Illuminate\Http\Client\Response logoutSession(string $token)
+ * @method static \Illuminate\Http\Client\Response deleteAccount(string $accessToken, string $currentPassword)
  * @method static \Illuminate\Http\Client\Response startOpaqueLogin(string $email, string $startLoginRequest)
  * @method static \Illuminate\Http\Client\Response finishOpaqueLogin(string $challengeId, string $finishLoginRequest)
  * @method static \Illuminate\Http\Client\Response inspectOpaqueSession(string $token)

@@ -116,6 +116,18 @@ class UserService
         return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/logout', ['token' => $token]);
     }
 
+    public function deleteAccount(#[\SensitiveParameter] string $accessToken, #[\SensitiveParameter] string $currentPassword): Response
+    {
+        if (! preg_match('/^(?:[1-9][0-9]{0,19}\|)?[A-Za-z0-9]{40}$/D', $accessToken)) {
+            throw new \InvalidArgumentException('Invalid account access token.');
+        }
+
+        return $this->sessionClient()->post($this->baseUrl.'v1/usercontroller/deleteuser', [
+            'access_token' => $accessToken,
+            'current_password' => $currentPassword,
+        ]);
+    }
+
     public function startOpaqueLogin(string $email, #[\SensitiveParameter] string $startLoginRequest): Response
     {
         if (strlen($email) > 254 || ! filter_var(trim($email), FILTER_VALIDATE_EMAIL)) {
