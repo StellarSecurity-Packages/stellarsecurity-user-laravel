@@ -30,7 +30,13 @@ $app->instance('config', new Repository(['stellar-user' => ['base_url' => 'https
 Facade::setFacadeApplication($app);
 putenv('STELLAR_PACKAGE_TEST_USERNAME=synthetic-service');
 putenv('STELLAR_PACKAGE_TEST_PASSWORD=synthetic-password');
-$factory = new Factory();
+$factory = new class extends Factory
+{
+    protected function newPendingRequest()
+    {
+        return parent::newPendingRequest()->setHandler(fn () => throw new LogicException('Real HTTP is blocked.'));
+    }
+};
 $factory->preventStrayRequests();
 $optionsSeen = [];
 $factory->fake(function ($request, $options) use ($factory, &$optionsSeen) {

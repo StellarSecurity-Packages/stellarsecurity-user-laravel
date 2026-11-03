@@ -116,6 +116,53 @@ class UserService
         return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/logout', ['token' => $token]);
     }
 
+    public function startOpaqueLogin(string $email, #[\SensitiveParameter] string $startLoginRequest): Response
+    {
+        if (strlen($email) > 254 || ! filter_var(trim($email), FILTER_VALIDATE_EMAIL)) {
+            throw new \InvalidArgumentException('Invalid OPAQUE email.');
+        }
+        $this->validateOpaqueProof($startLoginRequest);
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/start', [
+            'email' => $email,
+            'startLoginRequest' => $startLoginRequest,
+        ]);
+    }
+
+    public function finishOpaqueLogin(string $challengeId, #[\SensitiveParameter] string $finishLoginRequest): Response
+    {
+        if (! preg_match('/^[a-f0-9]{64}$/D', $challengeId)) {
+            throw new \InvalidArgumentException('Invalid OPAQUE challenge.');
+        }
+        $this->validateOpaqueProof($finishLoginRequest);
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/finish', [
+            'challengeId' => $challengeId,
+            'finishLoginRequest' => $finishLoginRequest,
+        ]);
+    }
+
+    public function inspectOpaqueSession(#[\SensitiveParameter] string $token): Response
+    {
+        $this->validateSessionToken($token);
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/session', ['token' => $token]);
+    }
+
+    public function logoutOpaqueSession(#[\SensitiveParameter] string $token): Response
+    {
+        $this->validateSessionToken($token);
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/logout', ['token' => $token]);
+    }
+
+    private function validateOpaqueProof(#[\SensitiveParameter] string $proof): void
+    {
+        if ($proof === '' || strlen($proof) > 16384) {
+            throw new \InvalidArgumentException('Invalid OPAQUE message.');
+        }
+    }
+
     private function sessionCredentials(string $email, #[\SensitiveParameter] string $password, ?\DateTimeInterface $expiresAt): array
     {
         $fields = ['username' => $email, 'password' => $password];
