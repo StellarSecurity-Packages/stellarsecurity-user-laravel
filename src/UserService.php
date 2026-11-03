@@ -259,7 +259,11 @@ class UserService
     /**
      * Send reset password link to a user.
      *
-     * POST /v1/usercontroller/sendresetpasswordlink?email=...&confirmation_code=...
+     * The confirmationCode argument requests email-code delivery for compatibility.
+     * User API generates the actual code; verify the code received by email.
+     * Protected OPAQUE accounts use the account recovery flow instead.
+     *
+     * POST /v1/usercontroller/sendresetpasswordlink
      */
     public function sendResetPasswordLink(string $email, string $confirmationCode): PromiseInterface|Response
     {
