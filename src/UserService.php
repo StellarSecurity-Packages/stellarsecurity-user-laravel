@@ -128,6 +128,33 @@ class UserService
         ]);
     }
 
+    public function getIdentityKeys(): Response
+    {
+        return $this->sessionClient()->get($this->baseUrl.'v2/auth/keys');
+    }
+
+    public function resolveToken(#[\SensitiveParameter] string $token): Response
+    {
+        if ($token === '' || strlen($token) > 1024) {
+            throw new \InvalidArgumentException('Invalid access token.');
+        }
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/token', ['token' => $token]);
+    }
+
+    public function getLoginMethod(string $email, string $nonce): Response
+    {
+        $email = strtolower(trim($email));
+        $bytes = base64_decode(strtr($nonce, '-_', '+/').'=', true);
+        if (strlen($email) > 254 || ! filter_var($email, FILTER_VALIDATE_EMAIL)
+            || ! preg_match('/^[A-Za-z0-9_-]{43}$/D', $nonce) || $bytes === false || strlen($bytes) !== 32
+            || rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=') !== $nonce) {
+            throw new \InvalidArgumentException('Invalid login method request.');
+        }
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/method', ['email' => $email, 'nonce' => $nonce]);
+    }
+
     public function startOpaqueLogin(string $email, #[\SensitiveParameter] string $startLoginRequest): Response
     {
         if (strlen($email) > 254 || ! filter_var(trim($email), FILTER_VALIDATE_EMAIL)) {
