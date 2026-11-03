@@ -116,6 +116,18 @@ class UserService
         return $this->sessionClient()->post($this->baseUrl.'v1/sessioncontroller/logout', ['token' => $token]);
     }
 
+    public function deleteAccount(#[\SensitiveParameter] string $accessToken, #[\SensitiveParameter] string $currentPassword): Response
+    {
+        if (! preg_match('/^(?:[1-9][0-9]{0,19}\|)?[A-Za-z0-9]{40}$/D', $accessToken)) {
+            throw new \InvalidArgumentException('Invalid account access token.');
+        }
+
+        return $this->sessionClient()->post($this->baseUrl.'v1/usercontroller/deleteuser', [
+            'access_token' => $accessToken,
+            'current_password' => $currentPassword,
+        ]);
+    }
+
     public function startOpaqueLogin(string $email, #[\SensitiveParameter] string $startLoginRequest): Response
     {
         if (strlen($email) > 254 || ! filter_var(trim($email), FILTER_VALIDATE_EMAIL)) {
@@ -156,6 +168,72 @@ class UserService
         return $this->sessionClient()->post($this->baseUrl.'v2/auth/logout', ['token' => $token]);
     }
 
+    public function startOpaqueAccount(string $flow, #[\SensitiveParameter] array $body): Response
+    {
+        return $this->opaqueAccountRequest($flow, 'start', $body);
+    }
+
+    public function proveOpaqueAccount(string $flow, #[\SensitiveParameter] array $body): Response
+    {
+        return $this->opaqueAccountRequest($flow, 'prove', $body);
+    }
+
+    public function finishOpaqueAccount(string $flow, #[\SensitiveParameter] array $body): Response
+    {
+        return $this->opaqueAccountRequest($flow, 'finish', $body);
+    }
+
+    private function opaqueAccountRequest(string $flow, string $step, #[\SensitiveParameter] array $body): Response
+    {
+        if (! in_array($flow, ['register', 'enroll', 'password', 'recovery-setup', 'recover', 'delete'], true)
+            || ($flow === 'delete' && $step === 'prove')) {
+            throw new \InvalidArgumentException('Invalid OPAQUE account operation.');
+        }
+        $expected = match ($step) {
+            'start' => match ($flow) {
+                'register' => ['email', 'registrationRequest'],
+                'enroll' => ['token', 'registrationRequest'],
+                'delete' => ['token', 'authorizationRequest'],
+                'recover' => ['accountId', 'email', 'registrationRequest', 'authorizationRequest'],
+                default => ['token', 'registrationRequest', 'authorizationRequest'],
+            },
+            'prove' => in_array($flow, ['register', 'enroll'], true)
+                ? ['challengeId', 'registrationRecord', 'startLoginRequest', 'keyEnvelope']
+                : ['challengeId', 'registrationRecord', 'startLoginRequest', 'keyEnvelope', 'authorizationFinish', 'authorizationProof'],
+            'finish' => $flow === 'delete'
+                ? ['challengeId', 'authorizationFinish', 'authorizationProof']
+                : ['challengeId', 'finishLoginRequest', 'commitProof'],
+        };
+        $actual = array_keys($body);
+        sort($actual);
+        sort($expected);
+        if ($actual !== $expected) {
+            throw new \InvalidArgumentException('Invalid OPAQUE account fields.');
+        }
+        foreach ($body as $field => $value) {
+            if (! is_string($value) || $value === '' || strlen($value) > 16384) {
+                throw new \InvalidArgumentException('Invalid OPAQUE account value.');
+            }
+            if ($field === 'token') {
+                $this->validateSessionToken($value);
+            } elseif ($field === 'challengeId' && ! preg_match('/^[a-f0-9]{64}$/D', $value)) {
+                throw new \InvalidArgumentException('Invalid OPAQUE account challenge.');
+            } elseif ($field === 'accountId' && ! preg_match('/^[1-9][0-9]{0,19}$/D', $value)) {
+                throw new \InvalidArgumentException('Invalid OPAQUE account ID.');
+            } elseif ($field === 'email' && (strlen($value) > 254 || ! filter_var(trim($value), FILTER_VALIDATE_EMAIL))) {
+                throw new \InvalidArgumentException('Invalid OPAQUE account email.');
+            } elseif (in_array($field, ['keyEnvelope', 'authorizationProof', 'commitProof'], true)) {
+                $bytes = base64_decode($value, true);
+                if ($bytes === false || strlen($bytes) !== ($field === 'keyEnvelope' ? 60 : 32)
+                    || base64_encode($bytes) !== $value) {
+                    throw new \InvalidArgumentException('Invalid OPAQUE envelope or proof.');
+                }
+            }
+        }
+
+        return $this->sessionClient()->post($this->baseUrl.'v2/auth/account/'.$flow.'/'.$step, $body);
+    }
+
     private function validateOpaqueProof(#[\SensitiveParameter] string $proof): void
     {
         if ($proof === '' || strlen($proof) > 16384) {
@@ -193,7 +271,11 @@ class UserService
     /**
      * Send reset password link to a user.
      *
-     * POST /v1/usercontroller/sendresetpasswordlink?email=...&confirmation_code=...
+     * The confirmationCode argument requests email-code delivery for compatibility.
+     * User API generates the actual code; verify the code received by email.
+     * Protected OPAQUE accounts use the account recovery flow instead.
+     *
+     * POST /v1/usercontroller/sendresetpasswordlink
      */
     public function sendResetPasswordLink(string $email, string $confirmationCode): PromiseInterface|Response
     {
@@ -320,6 +402,8 @@ class UserService
 
     /**
      * Delete a user.
+     *
+     * @deprecated Use deleteAccount() with the user's bearer token. The secured API rejects ID-only deletion.
      *
      * POST /v1/usercontroller/deleteuser
      */
