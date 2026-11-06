@@ -19,6 +19,11 @@ class DesktopSessionClient extends UserService
         if (!preg_match('/^[1-9][0-9]{0,31}\|[A-Za-z0-9]{40}$/D', $token) || !preg_match('/^[a-f0-9]{64}$/D', $subscriptionHash)) throw new \InvalidArgumentException('Invalid anonymous session.');
         return $this->desktop('anonymous', ['token' => $token, 'subscription_hash' => $subscriptionHash]);
     }
+    public function rememberScopedSession(#[\SensitiveParameter] string $token): Response
+    {
+        if (!preg_match('/^[1-9][0-9]{0,31}\|[A-Za-z0-9]{40}$/D', $token)) throw new \InvalidArgumentException('Invalid session.');
+        return $this->desktop('upgrade', ['token' => $token]);
+    }
     public function renewDesktopSession(#[\SensitiveParameter] string $renewal): Response
     { $this->renewal($renewal); return $this->desktop('renew', ['renewal_token' => $renewal]); }
     public function logoutDesktopSession(#[\SensitiveParameter] string $renewal): Response
