@@ -1,0 +1,25 @@
+{
+  "name": "Shared remembered device sessions",
+  "audience": "Trusted application backends, including desktop and mobile APIs",
+  "client": "StellarSecurity\\UserApiLaravel\\DeviceSessionClient",
+  "base_url": "Existing stellar-user.base_url configuration; endpoint paths belong to the SDK",
+  "endpoint_prefix": "v1/device-sessions",
+  "authentication": "Existing server-side service authentication; never embed service credentials in desktop, iOS, Android or browser apps",
+  "operations": {
+    "loginRememberedSession": "Primary credentials -> scoped access plus renewal credential",
+    "registerRememberedSession": "Existing registration policy -> scoped access plus renewal credential",
+    "rememberScopedSession": "Upgrade a valid existing scoped access token",
+    "rememberAnonymousSession": "Compatibility enrollment for a verified anonymous VPN account; calling backend verifies ownership",
+    "renewDeviceSession": "Renewal-only credential -> 24-hour scoped access",
+    "inspectDeviceSession": "Validate scoped access and obtain its account identity",
+    "revokeDeviceSession": "Revoke only the supplied device session"
+  },
+  "lifetimes": {
+    "access": "24 hours",
+    "renewal": "No idle or absolute expiry; explicit revocation and account/authentication changes still apply"
+  },
+  "client_storage": "Each native client stores its own renewal credential in protected OS storage. The consuming API never receives user-selected account IDs, scopes or token lifetimes.",
+  "isolation": "Mobile and desktop sessions use the same service with separate device credentials; revoking one must preserve the other.",
+  "legacy": "UserService session methods are unchanged. DesktopSessionClient is a deprecated compatibility facade over DeviceSessionClient.",
+  "rollout": "Review source, release SDK, approve exact dependency/runtime, apply User API migration and enable STELLAR_DEVICE_SESSIONS_ENABLED. Each consuming backend opts in separately."
+}
