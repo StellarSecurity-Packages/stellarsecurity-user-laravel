@@ -8,11 +8,13 @@
   "operations": {
     "loginRememberedSession": "Primary credentials -> scoped access plus renewal credential",
     "registerRememberedSession": "Existing registration policy -> scoped access plus renewal credential",
-    "rememberScopedSession": "Upgrade a valid existing scoped access token",
+    "rememberScopedSession": "Retired: throws without network access; fresh primary authentication required",
     "rememberAnonymousSession": "Compatibility enrollment for a verified anonymous VPN account; calling backend verifies ownership",
     "renewDeviceSession": "Renewal-only credential -> 24-hour scoped access",
     "inspectDeviceSession": "Validate scoped access and obtain its account identity",
-    "revokeDeviceSession": "Revoke only the supplied device session"
+    "revokeDeviceSession": "Revoke only the supplied device session",
+    "listDeviceSessions": "Valid renewal credential -> owner-only sanitized sessions, 50 per page and optional after cursor",
+    "revokeOwnedDeviceSession": "Valid renewal credential plus session ID -> revoke one session owned by the authenticated account; foreign/missing IDs return the same 404"
   },
   "lifetimes": {
     "access": "24 hours",

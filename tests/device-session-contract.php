@@ -38,7 +38,14 @@ namespace {
     $sdk->loginRememberedSession('user@example.test', 'synthetic-password');
     $sdk->registerRememberedSession('user@example.test', 'synthetic-password');
     $sdk->rememberAnonymousSession($token, str_repeat('a', 64));
-    $sdk->rememberScopedSession($token);
+    try {
+        $sdk->rememberScopedSession($token);
+        throw new \RuntimeException('Access-only enrollment must not issue a request');
+    } catch (\LogicException) {
+    }
+    $sdk->listDeviceSessions($root);
+    $sdk->listDeviceSessions($root, explode('|', $root)[0]);
+    $sdk->revokeOwnedDeviceSession($root, explode('|', $root)[0]);
     $sdk->renewDeviceSession($root);
     $sdk->inspectDeviceSession($token);
     $sdk->revokeDeviceSession($root);
@@ -46,7 +53,9 @@ namespace {
         'login',
         'register',
         'anonymous',
-        'upgrade',
+        'list',
+        'list',
+        'revoke-owned',
         'renew',
         'inspect',
         'logout',
@@ -66,8 +75,26 @@ namespace {
         } catch (\InvalidArgumentException) {
         }
     }
-    if (count(\Illuminate\Http\Client\PendingRequest::$calls) !== 7) {
+    if (count(\Illuminate\Http\Client\PendingRequest::$calls) !== 9) {
         throw new \RuntimeException('Unexpected request');
+    }
+    $calls = \Illuminate\Http\Client\PendingRequest::$calls;
+    if ($calls[3][1] !== ['renewal_token' => $root]
+        || $calls[4][1] !== ['renewal_token' => $root, 'after' => explode('|', $root)[0]]
+        || $calls[5][1] !== ['renewal_token' => $root, 'session_id' => explode('|', $root)[0]]) {
+        throw new \RuntimeException('Invalid management payload');
+    }
+    foreach (['', '../invalid', $root,  'd1' . str_repeat('a', 33)] as $badId) {
+        foreach (['listDeviceSessions', 'revokeOwnedDeviceSession'] as $method) {
+            try {
+                $sdk->{$method}($root, $badId);
+                throw new \RuntimeException('Invalid identifier accepted');
+            } catch (\InvalidArgumentException) {
+            }
+        }
+    }
+    if (count(\Illuminate\Http\Client\PendingRequest::$calls) !== 9) {
+        throw new \RuntimeException('Invalid input reached transport');
     }
     require dirname(__DIR__) . '/src/DesktopSessionClient.php';
     $compat = new class extends \StellarSecurity\UserApiLaravel\DesktopSessionClient
@@ -85,10 +112,10 @@ namespace {
     $compat->renewDesktopSession($root);
     $compat->logoutDesktopSession($root);
     $compat->inspectDesktopSession($token);
-    foreach (array_slice(\Illuminate\Http\Client\PendingRequest::$calls, 7) as[$url, $body]) {
+    foreach (array_slice(\Illuminate\Http\Client\PendingRequest::$calls, 9) as[$url, $body]) {
         if (! str_starts_with($url, 'https://example.invalid/api/v1/device-sessions/')) {
             throw new \RuntimeException('Compatibility alias escaped shared protocol');
         }
     }
-    echo "13 SDK contract checks passed; no framework boot, credentials or network.\n";
+    echo "21 SDK contract checks passed; no framework boot, credentials or network.\n";
 }
