@@ -22,6 +22,9 @@ foreach ($starts as $flow => $body) {
             'startLoginRequest' => 'public-login-message',
             'keyEnvelope' => base64_encode(str_repeat('e', 60)),
         ];
+        if ($flow === 'enroll') {
+            $operations['prove']['confirmationCode'] = '12345678';
+        }
         if (! in_array($flow, ['register', 'enroll'], true)) {
             $operations['prove']['authorizationFinish'] = 'public-authorization-finish';
             $operations['prove']['authorizationProof'] = $proof;
@@ -41,7 +44,14 @@ foreach ($starts as $flow => $body) {
     }
 }
 verify($sent === 17 && count($factory->recorded()) === $before + $sent, '17 protocol operations each issue one request');
+$legacyStart = ['token' => str_repeat('l', 40), 'registrationRequest' => 'public-registration-message'];
+$client->startOpaqueAccount('enroll', $legacyStart);
+$request = $factory->recorded()[$before + $sent++][0];
+verify($request->data() === $legacyStart, 'historical secret-only session remains in the enrollment body');
+verify(! str_contains($request->url(), $legacyStart['token']), 'historical enrollment token never enters the URL');
 $invalid = [
+    fn () => $client->proveOpaqueAccount('enroll', ['challengeId' => $challenge, 'registrationRecord' => 'record', 'startLoginRequest' => 'message', 'keyEnvelope' => base64_encode(str_repeat('e', 60))]),
+    fn () => $client->proveOpaqueAccount('enroll', ['challengeId' => $challenge, 'registrationRecord' => 'record', 'startLoginRequest' => 'message', 'keyEnvelope' => base64_encode(str_repeat('e', 60)), 'confirmationCode' => 'invalid']),
     fn () => $client->startOpaqueAccount('../usercontroller/login', $starts['register']),
     fn () => $client->startOpaqueAccount('register', $starts['register'] + ['password' => 'never-transmit']),
     fn () => $client->startOpaqueAccount('enroll', $starts['enroll'] + ['accountId' => '2']),
