@@ -224,9 +224,11 @@ class UserService
                 'recover' => ['accountId', 'email', 'registrationRequest', 'authorizationRequest'],
                 default => ['token', 'registrationRequest', 'authorizationRequest'],
             },
-            'prove' => in_array($flow, ['register', 'enroll'], true)
-                ? ['challengeId', 'registrationRecord', 'startLoginRequest', 'keyEnvelope']
-                : ['challengeId', 'registrationRecord', 'startLoginRequest', 'keyEnvelope', 'authorizationFinish', 'authorizationProof'],
+            'prove' => array_merge(['challengeId', 'registrationRecord', 'startLoginRequest', 'keyEnvelope'], match ($flow) {
+                'register' => [],
+                'enroll' => ['confirmationCode'],
+                default => ['authorizationFinish', 'authorizationProof'],
+            }),
             'finish' => $flow === 'delete'
                 ? ['challengeId', 'authorizationFinish', 'authorizationProof']
                 : ['challengeId', 'finishLoginRequest', 'commitProof'],
@@ -242,7 +244,11 @@ class UserService
                 throw new \InvalidArgumentException('Invalid OPAQUE account value.');
             }
             if ($field === 'token') {
-                $this->validateSessionToken($value);
+                if ($flow !== 'enroll' || ! preg_match('/^[A-Za-z0-9]{40}$/D', $value)) {
+                    $this->validateSessionToken($value);
+                }
+            } elseif ($field === 'confirmationCode' && ! preg_match('/^[0-9]{8}$/D', $value)) {
+                throw new \InvalidArgumentException('Invalid enrollment confirmation code.');
             } elseif ($field === 'challengeId' && ! preg_match('/^[a-f0-9]{64}$/D', $value)) {
                 throw new \InvalidArgumentException('Invalid OPAQUE account challenge.');
             } elseif ($field === 'accountId' && ! preg_match('/^[1-9][0-9]{0,19}$/D', $value)) {
